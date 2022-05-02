@@ -31,6 +31,8 @@
 #include <linux/version.h>
 #include <linux/nls.h>
 #include <linux/proc_fs.h>
+#include <linux/slab.h>
+#include <linux/seq_file.h>
 #include "samplefs.h"
 
 /* helpful if this is different than other fs */
@@ -84,7 +86,7 @@ samplefs_parse_mount_options(char *options, struct samplefs_sb_info *sfs_sb)
 		if ((value = strchr(data, '=')) != NULL)
 			*value++ = '\0';
 
-		if (strnicmp(data, "rsize", 5) == 0) {
+		if (strncasecmp(data, "rsize", 5) == 0) {
 			if (value && *value) {
 				size = simple_strtoul(value, &value, 0);
 				if (size > 0) {
@@ -94,7 +96,7 @@ samplefs_parse_mount_options(char *options, struct samplefs_sb_info *sfs_sb)
 				}
 
 			}
-		} else if (strnicmp(data, "wsize", 5) == 0) {
+		} else if (strncasecmp(data, "wsize", 5) == 0) {
 			if (value && *value) {
 				size = simple_strtoul(value, &value, 0);
 				if (size > 0) {
@@ -116,8 +118,8 @@ static int samplefs_fill_super(struct super_block *sb, void * data, int silent)
 	struct samplefs_sb_info *sfs_sb;
 
 	sb->s_maxbytes = MAX_LFS_FILESIZE; /* NB: may be too large for mem */
-	sb->s_blocksize = PAGE_CACHE_SIZE;
-	sb->s_blocksize_bits = PAGE_CACHE_SHIFT;
+	sb->s_blocksize = PAGE_SIZE;
+	sb->s_blocksize_bits = PAGE_SHIFT;
 	sb->s_magic = SAMPLEFS_MAGIC;
 	sb->s_op = &samplefs_super_ops;
 	sb->s_time_gran = 1; /* 1 nanosecond time granularity */
@@ -128,7 +130,7 @@ static int samplefs_fill_super(struct super_block *sb, void * data, int silent)
 /* Eventually replace iget with:
 	inode = samplefs_get_inode(sb, S_IFDIR | 0755, 0); */
 
-	inode = iget(sb, SAMPLEFS_ROOT_I);
+	inode = iget_locked(sb, SAMPLEFS_ROOT_I);
 
 	if (!inode)
 		return -ENOMEM;
@@ -146,7 +148,7 @@ static int samplefs_fill_super(struct super_block *sb, void * data, int silent)
 
 	printk(KERN_INFO "samplefs: about to alloc root inode\n");
 
-	sb->s_root = d_alloc_root(inode);
+	sb->s_root = d_make_root(inode);
 	if (!sb->s_root) {
 		iput(inode);
 		kfree(sfs_sb);
@@ -163,25 +165,17 @@ static int samplefs_fill_super(struct super_block *sb, void * data, int silent)
 	return 0;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,18)
-struct super_block * samplefs_get_sb(struct file_system_type *fs_type,
+static struct dentry * samplefs_mount(struct file_system_type *fs_type,
 	int flags, const char *dev_name, void *data)
 {
-	return get_sb_nodev(fs_type, flags, data, samplefs_fill_super);
+	return mount_nodev(fs_type, flags, data, samplefs_fill_super);
 }
-#else
-int samplefs_get_sb(struct file_system_type *fs_type,
-	int flags, const char *dev_name, void *data, struct vfsmount *mnt)
-{
-	return get_sb_nodev(fs_type, flags, data, samplefs_fill_super, mnt);
-}
-#endif
 
 
 static struct file_system_type samplefs_fs_type = {
 	.owner = THIS_MODULE,
 	.name = "samplefs",
-	.get_sb = samplefs_get_sb,
+	.mount = samplefs_mount,
 	.kill_sb = kill_anon_super,
 	/*  .fs_flags */
 };
@@ -190,47 +184,25 @@ static struct file_system_type samplefs_fs_type = {
 static struct proc_dir_entry *proc_fs_samplefs;
 
 static int
-sfs_debug_read(char *buf, char **beginBuffer, off_t offset,
-		int count, int *eof, void *data)
+sfs_debug_show(struct seq_file *m, void *v)
 {
-	int length = 0;
-	char *original_buf = buf;
-
-	*beginBuffer = buf + offset;
-
-	length = sprintf(buf,
+	seq_printf(m,
 			"Display Debugging Information\n"
 			"-----------------------------\n");
 
-	buf += length;
-
 	/* FS-FILLIN - add your debug information here */
 
-	length = buf - original_buf;
-	if (offset + count >= length)
-		*eof = 1;
-	if (length < offset) {
-		*eof = 1;
-		return 0;
-	} else {
-		length = length - offset;
-	}
-
-	if (length > count)
-		length = count;
-
-	return length;
+	return 0;
 }
 void
 sfs_proc_init(void)
 {
-	proc_fs_samplefs = proc_mkdir("samplefs", proc_root_fs);
+	proc_fs_samplefs = proc_mkdir("fs/samplefs", NULL);
 	if (proc_fs_samplefs == NULL)
 		return;
 
-	proc_fs_samplefs->owner = THIS_MODULE;
-	create_proc_read_entry("DebugData", 0, proc_fs_samplefs,
-				sfs_debug_read, NULL);
+	proc_create_single("DebugData", 0, proc_fs_samplefs,
+				sfs_debug_show);
 }
 
 void
@@ -240,7 +212,7 @@ sfs_proc_clean(void)
 		return;
 
 	remove_proc_entry("DebugData", proc_fs_samplefs);
-	remove_proc_entry("samplefs", proc_root_fs);
+	remove_proc_entry("fs/samplefs", NULL);
 }
 #endif /* CONFIG_PROC_FS */
 
