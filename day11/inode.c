@@ -40,7 +40,7 @@ extern struct inode *samplefs_get_inode(struct super_block *sb, int mode,
  * (and since it does not help performance for in memory filesystem).
  */
 static struct dentry *sfs_lookup(struct inode *dir, struct dentry *dentry, 
-				struct nameidata *nd)
+				unsigned int flags)
 {
 	struct samplefs_sb_info * sfs_sb = SFS_SB(dir->i_sb);
 	if (dentry->d_name.len > NAME_MAX)
@@ -55,7 +55,7 @@ static struct dentry *sfs_lookup(struct inode *dir, struct dentry *dentry,
 }
 
 static int
-sfs_mknod(struct inode *dir, struct dentry *dentry, int mode, dev_t dev)
+sfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev)
 {
         struct inode * inode = samplefs_get_inode(dir->i_sb, mode, dev);
         int error = -ENOSPC;
@@ -70,7 +70,7 @@ sfs_mknod(struct inode *dir, struct dentry *dentry, int mode, dev_t dev)
                 d_instantiate(dentry, inode);
                 dget(dentry);   /* Extra count - pin the dentry in core */
                 error = 0;
-                dir->i_mtime = dir->i_ctime = CURRENT_TIME;
+                dir->i_mtime = dir->i_ctime = current_time(dir);
 
 		/* real filesystems would normally use i_size_write function */
 		dir->i_size += 0x20;  /* bogus small size for each dir entry */
@@ -79,7 +79,7 @@ sfs_mknod(struct inode *dir, struct dentry *dentry, int mode, dev_t dev)
 }
 
 
-static int sfs_mkdir(struct inode * dir, struct dentry * dentry, int mode)
+static int sfs_mkdir(struct inode * dir, struct dentry * dentry, umode_t mode)
 {
         int retval = 0;
 	
@@ -87,12 +87,12 @@ static int sfs_mkdir(struct inode * dir, struct dentry * dentry, int mode)
 
 	/* link count is two for dir, for dot and dot dot */
         if (!retval)
-                dir->i_nlink++;
+                inc_nlink(dir);
         return retval;
 }
 
-static int sfs_create(struct inode *dir, struct dentry *dentry, int mode, 
-			struct nameidata *nd)
+static int sfs_create(struct inode *dir, struct dentry *dentry, umode_t mode, 
+			bool excl)
 {
         return sfs_mknod(dir, dentry, mode | S_IFREG, 0);
 }
@@ -112,7 +112,7 @@ static int sfs_symlink(struct inode * dir, struct dentry *dentry,
 				inode->i_gid = dir->i_gid;
 			d_instantiate(dentry, inode);
 			dget(dentry);
-			dir->i_mtime = dir->i_ctime = CURRENT_TIME;
+			dir->i_mtime = dir->i_ctime = current_time(dir);
 		} else
 			iput(inode);
 	}
