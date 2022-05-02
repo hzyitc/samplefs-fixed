@@ -30,6 +30,7 @@
 #include <linux/pagemap.h>
 #include <linux/version.h>
 #include <linux/nls.h>
+#include <linux/slab.h>
 #include "samplefs.h"
 
 /* helpful if this is different than other fs */
@@ -77,13 +78,13 @@ samplefs_parse_mount_options(char *options, struct samplefs_sb_info *sfs_sb)
 		if ((value = strchr(data, '=')) != NULL)
 			*value++ = '\0';
 
-		if (strnicmp(data, "rsize", 5) == 0) {
+		if (strncasecmp(data, "rsize", 5) == 0) {
 			if (value && *value) {
 				size = simple_strtoul(value, &value, 0);
 				if (size > 0)
 					sfs_sb->rsize = size;
 			}
-		} else if (strnicmp(data, "wsize", 5) == 0) {
+		} else if (strncasecmp(data, "wsize", 5) == 0) {
 			if (value && *value) {
 				size = simple_strtoul(value, &value, 0);
 				if (size > 0)
@@ -100,8 +101,8 @@ static int samplefs_fill_super(struct super_block *sb, void *data, int silent)
 	struct samplefs_sb_info *sfs_sb;
 
 	sb->s_maxbytes = MAX_LFS_FILESIZE; /* NB: may be too large for mem */
-	sb->s_blocksize = PAGE_CACHE_SIZE;
-	sb->s_blocksize_bits = PAGE_CACHE_SHIFT;
+	sb->s_blocksize = PAGE_SIZE;
+	sb->s_blocksize_bits = PAGE_SHIFT;
 	sb->s_magic = SAMPLEFS_MAGIC;
 	sb->s_op = &samplefs_super_ops;
 	sb->s_time_gran = 1; /* 1 nanosecond time granularity */
@@ -109,7 +110,7 @@ static int samplefs_fill_super(struct super_block *sb, void *data, int silent)
 /* Eventually replace iget with:
 	inode = samplefs_get_inode(sb, S_IFDIR | 0755, 0); */
 
-	inode = iget(sb, SAMPLEFS_ROOT_I);
+	inode = iget_locked(sb, SAMPLEFS_ROOT_I);
 
 	if (!inode)
 		return -ENOMEM;
@@ -121,7 +122,7 @@ static int samplefs_fill_super(struct super_block *sb, void *data, int silent)
 		return -ENOMEM;
 	}
 
-	sb->s_root = d_alloc_root(inode);
+	sb->s_root = d_make_root(inode);
 	if (!sb->s_root) {
 		iput(inode);
 		kfree(sfs_sb);
@@ -138,25 +139,17 @@ static int samplefs_fill_super(struct super_block *sb, void *data, int silent)
 	return 0;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,18)
-struct super_block * samplefs_get_sb(struct file_system_type *fs_type,
+static struct dentry * samplefs_mount(struct file_system_type *fs_type,
 	int flags, const char *dev_name, void *data)
 {
-	return get_sb_nodev(fs_type, flags, data, samplefs_fill_super);
+	return mount_nodev(fs_type, flags, data, samplefs_fill_super);
 }
-#else
-int samplefs_get_sb(struct file_system_type *fs_type,
-	int flags, const char *dev_name, void *data, struct vfsmount *mnt)
-{
-	return get_sb_nodev(fs_type, flags, data, samplefs_fill_super, mnt);
-}
-#endif
 
 
 static struct file_system_type samplefs_fs_type = {
 	.owner = THIS_MODULE,
 	.name = "samplefs",
-	.get_sb = samplefs_get_sb,
+	.mount = samplefs_mount,
 	.kill_sb = kill_anon_super,
 	/*  .fs_flags */
 };
