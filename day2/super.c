@@ -1,7 +1,7 @@
 /*
  *   fs/samplefs/super.c
  *
- *   Copyright (C) International Business Machines  Corp., 2006,2007
+ *   Copyright (C) International Business Machines  Corp., 2006, 2007
  *   Author(s): Steve French (sfrench@us.ibm.com)
  *
  *   Sample File System
@@ -36,8 +36,7 @@
 /* helpful if this is different than other fs */
 #define SAMPLEFS_MAGIC     0x73616d70 /* "SAMP" */
 
-static void
-samplefs_put_super(struct super_block *sb)
+static void samplefs_put_super(struct super_block *sb)
 {
 	struct samplefs_sb_info *sfs_sb;
 
@@ -48,7 +47,7 @@ samplefs_put_super(struct super_block *sb)
 	}
 
 	unload_nls(sfs_sb->local_nls);
- 
+
 	/* FS-FILLIN your fs specific umount logic here */
 
 	kfree(sfs_sb);
@@ -62,8 +61,8 @@ struct super_operations samplefs_super_ops = {
 	.put_super      = samplefs_put_super,
 };
 
-static void
-samplefs_parse_mount_options(char *options, struct samplefs_sb_info *sfs_sb)
+static void samplefs_parse_mount_options(char *options,
+                                         struct samplefs_sb_info *sfs_sb)
 {
 	char *value;
 	char *data;
@@ -100,14 +99,14 @@ static int samplefs_fill_super(struct super_block *sb, void *data, int silent)
 	struct inode *inode;
 	struct samplefs_sb_info *sfs_sb;
 
-	sb->s_maxbytes = MAX_LFS_FILESIZE; /* NB: may be too large for mem */
-	sb->s_blocksize = PAGE_SIZE;
+	sb->s_maxbytes       = MAX_LFS_FILESIZE; /* NB: may be too large for mem */
+	sb->s_blocksize      = PAGE_SIZE;
 	sb->s_blocksize_bits = PAGE_SHIFT;
-	sb->s_magic = SAMPLEFS_MAGIC;
-	sb->s_op = &samplefs_super_ops;
-	sb->s_time_gran = 1; /* 1 nanosecond time granularity */
+	sb->s_magic          = SAMPLEFS_MAGIC;
+	sb->s_op             = &samplefs_super_ops;
+	sb->s_time_gran      = 1; /* 1 nanosecond time granularity */
 
-/* Eventually replace iget with:
+	/* Eventually replace iget with:
 	inode = samplefs_get_inode(sb, S_IFDIR | 0755, 0); */
 
 	inode = iget_locked(sb, SAMPLEFS_ROOT_I);
@@ -131,25 +130,26 @@ static int samplefs_fill_super(struct super_block *sb, void *data, int silent)
 
 	/* below not needed for many fs - but an example of per fs sb data */
 	sfs_sb->local_nls = load_nls_default();
-	
+
 	samplefs_parse_mount_options(data, sfs_sb);
-	
+
 	/* FS-FILLIN your filesystem specific mount logic/checks here */
 
 	return 0;
 }
 
-static struct dentry * samplefs_mount(struct file_system_type *fs_type,
-	int flags, const char *dev_name, void *data)
+static struct dentry *samplefs_mount(struct file_system_type *fs_type,
+                                     int flags, const char *dev_name,
+                                     void *data)
 {
 	return mount_nodev(fs_type, flags, data, samplefs_fill_super);
 }
 
 
 static struct file_system_type samplefs_fs_type = {
-	.owner = THIS_MODULE,
-	.name = "samplefs",
-	.mount = samplefs_mount,
+	.owner   = THIS_MODULE,
+	.name    = "samplefs",
+	.mount   = samplefs_mount,
 	.kill_sb = kill_anon_super,
 	/*  .fs_flags */
 };
@@ -167,4 +167,3 @@ static void __exit exit_samplefs_fs(void)
 
 module_init(init_samplefs_fs)
 module_exit(exit_samplefs_fs)
-

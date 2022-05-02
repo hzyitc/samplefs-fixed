@@ -1,7 +1,7 @@
 /*
  *   fs/samplefs/super.c
  *
- *   Copyright (C) International Business Machines  Corp., 2006,2007
+ *   Copyright (C) International Business Machines  Corp., 2006, 2007
  *   Author(s): Steve French (sfrench@us.ibm.com)
  *
  *   Sample File System
@@ -32,22 +32,23 @@
 /* helpful if this is different than other fs */
 #define SAMPLEFS_MAGIC     0x73616d70 /* "SAMP" */
 
-static int samplefs_fill_super(struct super_block * sb, void * data, int silent)
+static int samplefs_fill_super(struct super_block *sb, void *data, int silent)
 {
 	return 0;
 }
 
-static struct dentry * samplefs_mount(struct file_system_type *fs_type,
-        int flags, const char *dev_name, void *data)
+static struct dentry *samplefs_mount(struct file_system_type *fs_type,
+                                     int flags, const char *dev_name,
+                                     void *data)
 {
 	return mount_nodev(fs_type, flags, data, samplefs_fill_super);
 }
 
 
 static struct file_system_type samplefs_fs_type = {
-	.owner = THIS_MODULE,
-	.name = "samplefs",
-	.mount = samplefs_mount,
+	.owner   = THIS_MODULE,
+	.name    = "samplefs",
+	.mount   = samplefs_mount,
 	.kill_sb = kill_anon_super,
 	/*  .fs_flags */
 };
@@ -65,4 +66,3 @@ static void __exit exit_samplefs_fs(void)
 
 module_init(init_samplefs_fs)
 module_exit(exit_samplefs_fs)
-

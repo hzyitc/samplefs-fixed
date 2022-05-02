@@ -40,26 +40,25 @@
 
 unsigned int sample_parm = 0;
 module_param(sample_parm, int, 0);
-MODULE_PARM_DESC(sample_parm,"An example parm. Default: x Range: y to z");
+MODULE_PARM_DESC(sample_parm, "An example parm. Default: x Range: y to z");
 
 extern struct inode_operations sfs_dir_inode_ops;
 extern struct inode_operations sfs_file_inode_ops;
 extern struct file_operations sfs_file_operations;
 extern struct address_space_operations sfs_aops;
 
-static void
-samplefs_put_super(struct super_block *sb)
+static void samplefs_put_super(struct super_block *sb)
 {
 	struct samplefs_sb_info *sfs_sb;
 
-        sfs_sb = SFS_SB(sb);
-        if(sfs_sb == NULL) {
-              /* Empty superblock info passed to unmount */
-                return;
-        }
- 
+	sfs_sb = SFS_SB(sb);
+	if (sfs_sb == NULL) {
+		/* Empty superblock info passed to unmount */
+		return;
+	}
+
 	unload_nls(sfs_sb->local_nls);
- 
+
 	/* FS-FILLIN your fs specific umount logic here */
 
 	kfree(sfs_sb);
@@ -73,14 +72,14 @@ struct super_operations samplefs_super_ops = {
 	.put_super      = samplefs_put_super,
 };
 
-static void 
-samplefs_parse_mount_options(char *options, struct samplefs_sb_info * sfs_sb)
+static void samplefs_parse_mount_options(char *options,
+                                         struct samplefs_sb_info *sfs_sb)
 {
 	char *value;
 	char *data;
 	int size;
 
-	if(!options)
+	if (!options)
 		return;
 
 	printk(KERN_INFO "samplefs: parsing mount options %s\n", options);
@@ -94,64 +93,60 @@ samplefs_parse_mount_options(char *options, struct samplefs_sb_info * sfs_sb)
 		if (strncasecmp(data, "rsize", 5) == 0) {
 			if (value && *value) {
 				size = simple_strtoul(value, &value, 0);
-				if(size > 0) {
+				if (size > 0) {
 					sfs_sb->rsize = size;
-					printk(KERN_INFO
-						"samplefs: rsize %d\n", size);
+					printk(KERN_INFO "samplefs: rsize %d\n", size);
 				}
 			}
 		} else if (strncasecmp(data, "wsize", 5) == 0) {
 			if (value && *value) {
 				size = simple_strtoul(value, &value, 0);
-				if(size > 0) {
+				if (size > 0) {
 					sfs_sb->wsize = size;
-					printk(KERN_INFO
-						"samplefs: wsize %d\n", size);
+					printk(KERN_INFO "samplefs: wsize %d\n", size);
 				}
 			}
 		} else if ((strncasecmp(data, "nocase", 6) == 0) ||
-			   (strncasecmp(data, "ignorecase", 10)  == 0)) {
+		           (strncasecmp(data, "ignorecase", 10) == 0)) {
 			sfs_sb->flags |= SFS_MNT_CASE;
 			printk(KERN_INFO "samplefs: ignore case\n");
 
 		} else {
-			printk(KERN_WARNING "samplefs: bad mount option %s\n",
-				data);
-		} 
+			printk(KERN_WARNING "samplefs: bad mount option %s\n", data);
+		}
 	}
 }
 
 static int sfs_ci_hash(const struct dentry *dentry, struct qstr *q)
 {
-        struct nls_table *codepage = SFS_SB(dentry->d_inode->i_sb)->local_nls;
-        unsigned long hash;
-        int i;
+	struct nls_table *codepage = SFS_SB(dentry->d_inode->i_sb)->local_nls;
+	unsigned long hash;
+	int i;
 
-        hash = init_name_hash(dentry);
-        for (i = 0; i < q->len; i++)
-                hash = partial_name_hash(nls_tolower(codepage, q->name[i]),
-                                         hash);
-        q->hash = end_name_hash(hash);
+	hash = init_name_hash(dentry);
+	for (i = 0; i < q->len; i++)
+		hash = partial_name_hash(nls_tolower(codepage, q->name[i]), hash);
+	q->hash = end_name_hash(hash);
 
-        return 0;
+	return 0;
 }
 
-static int sfs_ci_compare(const struct dentry *dentry, unsigned int len, const char *str,
-                           const struct qstr *name)
+static int sfs_ci_compare(const struct dentry *dentry, unsigned int len,
+                          const char *str, const struct qstr *name)
 {
-        struct nls_table *codepage = SFS_SB(dentry->d_inode->i_sb)->local_nls;
+	struct nls_table *codepage = SFS_SB(dentry->d_inode->i_sb)->local_nls;
 
-        if ((len == name->len) &&
-            (nls_strnicmp(codepage, str, name->name, len) == 0)) {
-                /*
-                 * To preserve case, don't let an existing negative dentry's
-                 * case take precedence.  If a is not a negative dentry, this
-                 * should have no side effects
-                 */
-                // memcpy((unsigned char *)str, name->name, len);
-                return 0;
-        }
-        return 1;
+	if ((len == name->len) &&
+	    (nls_strnicmp(codepage, str, name->name, len) == 0)) {
+		/*
+		 * To preserve case, don't let an existing negative dentry's
+		 * case take precedence.  If a is not a negative dentry, this
+		 * should have no side effects
+		 */
+		// memcpy((unsigned char *)str, name->name, len);
+		return 0;
+	}
+	return 1;
 }
 
 /* No sense hanging on to negative dentries as they are only
@@ -160,7 +155,7 @@ or disk filesystem */
 
 static int sfs_delete_dentry(const struct dentry *dentry)
 {
-        return 1;
+	return 1;
 }
 
 struct dentry_operations sfs_dentry_ops = {
@@ -168,10 +163,10 @@ struct dentry_operations sfs_dentry_ops = {
 };
 
 struct dentry_operations sfs_ci_dentry_ops = {
-/*	.d_revalidate = xxxd_revalidate, Not needed for this type of fs */
-	.d_hash = sfs_ci_hash,
+	// .d_revalidate = xxxd_revalidate, // Not needed for this type of fs
+	.d_hash    = sfs_ci_hash,
 	.d_compare = sfs_ci_compare,
-	.d_delete = sfs_delete_dentry,
+	.d_delete  = sfs_delete_dentry,
 };
 
 /*
@@ -182,54 +177,53 @@ struct dentry_operations sfs_ci_dentry_ops = {
 
 struct inode *samplefs_get_inode(struct super_block *sb, int mode, dev_t dev)
 {
-        struct inode * inode = new_inode(sb);
-	struct samplefs_sb_info * sfs_sb = SFS_SB(sb);
+	struct inode *inode = new_inode(sb);
+	struct samplefs_sb_info *sfs_sb = SFS_SB(sb);
 
-        if (inode) {
-                inode->i_mode = mode;
-                inode->i_uid = current_fsuid();
-                inode->i_gid = current_fsgid();
-                inode->i_blocks = 0;
-                inode->i_atime = inode->i_mtime = inode->i_ctime = current_time(inode);
+	if (inode) {
+		inode->i_mode   = mode;
+		inode->i_uid    = current_fsuid();
+		inode->i_gid    = current_fsgid();
+		inode->i_blocks = 0;
+		inode->i_atime = inode->i_mtime = inode->i_ctime = current_time(inode);
 		printk(KERN_INFO "about to set inode ops\n");
 		inode->i_mapping->a_ops = &sfs_aops;
-                switch (mode & S_IFMT) {
-                default:
+		switch (mode & S_IFMT) {
+		default:
 			init_special_inode(inode, mode, dev);
 			break;
-                case S_IFREG:
+		case S_IFREG:
 			printk(KERN_INFO "file inode\n");
-			inode->i_op = &sfs_file_inode_ops;
-			inode->i_fop =  &sfs_file_operations;
+			inode->i_op  = &sfs_file_inode_ops;
+			inode->i_fop = &sfs_file_operations;
 			break;
-                case S_IFDIR:
-			printk(KERN_INFO "directory inode sfs_sb: %p\n",sfs_sb);
-			inode->i_op = &sfs_dir_inode_ops;
+		case S_IFDIR:
+			printk(KERN_INFO "directory inode sfs_sb: %p\n", sfs_sb);
+			inode->i_op  = &sfs_dir_inode_ops;
 			inode->i_fop = &simple_dir_operations;
 
-                        /* link == 2 (for initial ".." and "." entries) */
-                        inc_nlink(inode);
-                        break;
+			/* link == 2 (for initial ".." and "." entries) */
+			inc_nlink(inode);
+			break;
 		case S_IFLNK:
 			inode->i_op = &page_symlink_inode_operations;
 			break;
-                }
-        }
-        return inode;
-	
+		}
+	}
+	return inode;
 }
 
-static int samplefs_fill_super(struct super_block * sb, void * data, int silent)
+static int samplefs_fill_super(struct super_block *sb, void *data, int silent)
 {
-	struct inode * inode;
-	struct samplefs_sb_info * sfs_sb;
+	struct inode *inode;
+	struct samplefs_sb_info *sfs_sb;
 
-	sb->s_maxbytes = MAX_LFS_FILESIZE; /* NB: may be too large for mem */
-	sb->s_blocksize = PAGE_SIZE;
+	sb->s_maxbytes       = MAX_LFS_FILESIZE; /* NB: may be too large for mem */
+	sb->s_blocksize      = PAGE_SIZE;
 	sb->s_blocksize_bits = PAGE_SHIFT;
-	sb->s_magic = SAMPLEFS_MAGIC;
-	sb->s_op = &samplefs_super_ops;
-	sb->s_time_gran = 1; /* 1 nanosecond time granularity */
+	sb->s_magic          = SAMPLEFS_MAGIC;
+	sb->s_op             = &samplefs_super_ops;
+	sb->s_time_gran      = 1; /* 1 nanosecond time granularity */
 
 
 	printk(KERN_INFO "samplefs: fill super\n");
@@ -237,18 +231,18 @@ static int samplefs_fill_super(struct super_block * sb, void * data, int silent)
 #ifdef CONFIG_SAMPLEFS_DEBUG
 	printk(KERN_INFO "samplefs: about to alloc s_fs_info\n");
 #endif
-	sb->s_fs_info = kzalloc(sizeof(struct samplefs_sb_info),GFP_KERNEL);
+	sb->s_fs_info = kzalloc(sizeof(struct samplefs_sb_info), GFP_KERNEL);
 	sfs_sb = SFS_SB(sb);
-	if(!sfs_sb) {
+	if (!sfs_sb) {
 		return -ENOMEM;
 	}
 
 	inode = samplefs_get_inode(sb, S_IFDIR | 0755, 0);
-	if(!inode) {
+	if (!inode) {
 		kfree(sfs_sb);
 		return -ENOMEM;
 	}
-	
+
 	printk(KERN_INFO "samplefs: about to alloc root inode\n");
 
 	sb->s_root = d_make_root(inode);
@@ -257,28 +251,29 @@ static int samplefs_fill_super(struct super_block * sb, void * data, int silent)
 		kfree(sfs_sb);
 		return -ENOMEM;
 	}
-	
+
 	/* below not needed for many fs - but an example of per fs sb data */
 	sfs_sb->local_nls = load_nls_default();
 
 	samplefs_parse_mount_options(data, sfs_sb);
-	
+
 	/* FS-FILLIN your filesystem specific mount logic/checks here */
 
 	return 0;
 }
 
-static struct dentry * samplefs_mount(struct file_system_type *fs_type,
-	int flags, const char *dev_name, void *data)
+static struct dentry *samplefs_mount(struct file_system_type *fs_type,
+                                     int flags, const char *dev_name,
+                                     void *data)
 {
 	return mount_nodev(fs_type, flags, data, samplefs_fill_super);
 }
 
 
 static struct file_system_type samplefs_fs_type = {
-	.owner = THIS_MODULE,
-	.name = "samplefs",
-	.mount = samplefs_mount,
+	.owner   = THIS_MODULE,
+	.name    = "samplefs",
+	.mount   = samplefs_mount,
 	.kill_sb = kill_litter_super,
 	/*  .fs_flags */
 };
@@ -286,35 +281,30 @@ static struct file_system_type samplefs_fs_type = {
 #ifdef CONFIG_PROC_FS
 static struct proc_dir_entry *proc_fs_samplefs;
 
-static int
-sfs_debug_show(struct seq_file *m, void *v)
+static int sfs_debug_show(struct seq_file *m, void *v)
 {
-	seq_printf(m,
-			"Display Debugging Information\n"
-			"-----------------------------\n");
+	seq_printf(m, "Display Debugging Information\n"
+	              "-----------------------------\n");
 
 	/* FS-FILLIN - add your debug information here */
 
 	return 0;
 }
-void
-sfs_proc_init(void)
+void sfs_proc_init(void)
 {
 	proc_fs_samplefs = proc_mkdir("fs/samplefs", NULL);
-        if (proc_fs_samplefs == NULL)
-                return;
+	if (proc_fs_samplefs == NULL)
+		return;
 
-	proc_create_single("DebugData", 0, proc_fs_samplefs,
-				sfs_debug_show);
+	proc_create_single("DebugData", 0, proc_fs_samplefs, sfs_debug_show);
 }
 
-void
-sfs_proc_clean(void)
+void sfs_proc_clean(void)
 {
 	if (proc_fs_samplefs == NULL)
 		return;
 
-        remove_proc_entry("DebugData", proc_fs_samplefs);
+	remove_proc_entry("DebugData", proc_fs_samplefs);
 	remove_proc_entry("fs/samplefs", NULL);
 }
 #endif /* CONFIG_PROC_FS */
@@ -327,7 +317,7 @@ static int __init init_samplefs_fs(void)
 #endif
 
 	/* some filesystems pass optional parms at load time */
-	if(sample_parm > 256) {
+	if (sample_parm > 256) {
 		printk("sample_parm %d too large, reset to 10\n", sample_parm);
 		sample_parm = 10;
 	}

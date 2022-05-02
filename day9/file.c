@@ -41,4 +41,3 @@ struct file_operations sfs_file_operations = {
 	.fsync          = generic_file_fsync,
 	.llseek         = generic_file_llseek,
 };
-

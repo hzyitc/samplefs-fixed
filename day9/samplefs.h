@@ -38,8 +38,7 @@ struct samplefs_sb_info {
 	struct nls_table *local_nls;
 };
 
-static inline struct samplefs_sb_info *
-SFS_SB(struct super_block *sb)
+static inline struct samplefs_sb_info *SFS_SB(struct super_block *sb)
 {
 	return sb->s_fs_info;
 }
