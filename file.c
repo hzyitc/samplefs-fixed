@@ -1,7 +1,7 @@
 /*
  *   fs/samplefs/file.c
  *
- *   Copyright (C) International Business Machines  Corp., 2006, 2007
+ *   Copyright (C) International Business Machines  Corp., 2006
  *   Author(s): Steve French (sfrench@us.ibm.com)
  *
  *   Sample File System
