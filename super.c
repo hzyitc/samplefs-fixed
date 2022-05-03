@@ -30,11 +30,17 @@
 #include <linux/pagemap.h>
 #include <linux/version.h>
 #include <linux/nls.h>
+#include <linux/proc_fs.h>
 #include <linux/slab.h>
+#include <linux/seq_file.h>
 #include "samplefs.h"
 
 /* helpful if this is different than other fs */
 #define SAMPLEFS_MAGIC     0x73616d70 /* "SAMP" */
+
+unsigned int sample_parm = 0;
+module_param(sample_parm, int, 0);
+MODULE_PARM_DESC(sample_parm, "An example parm. Default: x Range: y to z");
 
 static void samplefs_put_super(struct super_block *sb)
 {
@@ -71,6 +77,8 @@ static void samplefs_parse_mount_options(char *options,
 	if (!options)
 		return;
 
+	printk(KERN_INFO "samplefs: parsing mount options %s\n", options);
+
 	while ((data = strsep(&options, ",")) != NULL) {
 		if (!*data)
 			continue;
@@ -80,19 +88,24 @@ static void samplefs_parse_mount_options(char *options,
 		if (strncasecmp(data, "rsize", 5) == 0) {
 			if (value && *value) {
 				size = simple_strtoul(value, &value, 0);
-				if (size > 0)
+				if (size > 0) {
 					sfs_sb->rsize = size;
+					printk(KERN_INFO "samplefs: rsize %d\n", size);
+				}
 			}
 		} else if (strncasecmp(data, "wsize", 5) == 0) {
 			if (value && *value) {
 				size = simple_strtoul(value, &value, 0);
-				if (size > 0)
+				if (size > 0) {
 					sfs_sb->wsize = size;
+					printk(KERN_INFO "samplefs: wsize %d\n", size);
+				}
 			}
-		} /* else unknown mount option */
+		} else {
+			printk(KERN_WARNING "samplefs: bad mount option %s\n", data);
+		}
 	}
 }
-
 
 static int samplefs_fill_super(struct super_block *sb, void *data, int silent)
 {
@@ -106,6 +119,9 @@ static int samplefs_fill_super(struct super_block *sb, void *data, int silent)
 	sb->s_op             = &samplefs_super_ops;
 	sb->s_time_gran      = 1; /* 1 nanosecond time granularity */
 
+
+	printk(KERN_INFO "samplefs: fill super\n");
+
 	/* Eventually replace iget with:
 	inode = samplefs_get_inode(sb, S_IFDIR | 0755, 0); */
 
@@ -114,12 +130,18 @@ static int samplefs_fill_super(struct super_block *sb, void *data, int silent)
 	if (!inode)
 		return -ENOMEM;
 
+#ifdef CONFIG_SAMPLEFS_DEBUG
+	printk(KERN_INFO "samplefs: about to alloc s_fs_info\n");
+#endif
 	sb->s_fs_info = kzalloc(sizeof(struct samplefs_sb_info), GFP_KERNEL);
 	sfs_sb = SFS_SB(sb);
 	if (!sfs_sb) {
 		iput(inode);
 		return -ENOMEM;
 	}
+
+
+	printk(KERN_INFO "samplefs: about to alloc root inode\n");
 
 	sb->s_root = d_make_root(inode);
 	if (!sb->s_root) {
@@ -154,16 +176,63 @@ static struct file_system_type samplefs_fs_type = {
 	/*  .fs_flags */
 };
 
+#ifdef CONFIG_PROC_FS
+static struct proc_dir_entry *proc_fs_samplefs;
+
+static int sfs_debug_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "Display Debugging Information\n"
+	              "-----------------------------\n");
+
+	/* FS-FILLIN - add your debug information here */
+
+	return 0;
+}
+void sfs_proc_init(void)
+{
+	proc_fs_samplefs = proc_mkdir("fs/samplefs", NULL);
+	if (proc_fs_samplefs == NULL)
+		return;
+
+	proc_create_single("DebugData", 0, proc_fs_samplefs, sfs_debug_show);
+}
+
+void sfs_proc_clean(void)
+{
+	if (proc_fs_samplefs == NULL)
+		return;
+
+	remove_proc_entry("DebugData", proc_fs_samplefs);
+	remove_proc_entry("fs/samplefs", NULL);
+}
+#endif /* CONFIG_PROC_FS */
 
 static int __init init_samplefs_fs(void)
 {
+	printk(KERN_INFO "init samplefs\n");
+#ifdef CONFIG_PROC_FS
+	sfs_proc_init();
+#endif
+
+	/* some filesystems pass optional parms at load time */
+	if (sample_parm > 256) {
+		printk(KERN_ERR "sample_parm %d too large, reset to 10\n", sample_parm);
+		sample_parm = 10;
+	}
+
 	return register_filesystem(&samplefs_fs_type);
 }
 
 static void __exit exit_samplefs_fs(void)
 {
+	printk(KERN_INFO "unloading samplefs\n");
+#ifdef CONFIG_PROC_FS
+	sfs_proc_clean();
+#endif
 	unregister_filesystem(&samplefs_fs_type);
 }
 
 module_init(init_samplefs_fs)
 module_exit(exit_samplefs_fs)
+
+MODULE_LICENSE("GPL");
