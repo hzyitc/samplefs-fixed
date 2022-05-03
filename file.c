@@ -27,3 +27,17 @@
 
 #include <linux/module.h>
 #include <linux/fs.h>
+
+struct address_space_operations sfs_aops = {
+	.readpage       = simple_readpage,
+	.write_begin    = simple_write_begin,
+	.write_end      = simple_write_end
+};
+
+struct file_operations sfs_file_operations = {
+	.read_iter      = generic_file_read_iter,
+	.write_iter     = generic_file_write_iter,
+	.mmap           = generic_file_mmap,
+	.fsync          = generic_file_fsync,
+	.llseek         = generic_file_llseek,
+};
