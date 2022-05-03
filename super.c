@@ -1,7 +1,7 @@
 /*
  *   fs/samplefs/super.c
  *
- *   Copyright (C) International Business Machines  Corp., 2006, 2007
+ *   Copyright (C) International Business Machines  Corp., 2006
  *   Author(s): Steve French (sfrench@us.ibm.com)
  *
  *   Sample File System
@@ -205,6 +205,9 @@ struct inode *samplefs_get_inode(struct super_block *sb, int mode, dev_t dev)
 			/* link == 2 (for initial ".." and "." entries) */
 			inc_nlink(inode);
 			break;
+		case S_IFLNK:
+			inode->i_op = &page_symlink_inode_operations;
+			break;
 		}
 	}
 	return inode;
@@ -315,7 +318,7 @@ static int __init init_samplefs_fs(void)
 
 	/* some filesystems pass optional parms at load time */
 	if (sample_parm > 256) {
-		printk(KERN_ERR "sample_parm %d too large, reset to 10\n", sample_parm);
+		printk("sample_parm %d too large, reset to 10\n", sample_parm);
 		sample_parm = 10;
 	}
 
